@@ -1,16 +1,4 @@
-import { refreshImageSwap } from '../modules/image-swap/content'
+// Content scripts stay off until a module needs page DOM.
+// Re-add content_scripts and host_permissions in manifest.config.ts, then boot adapters here.
 
-void refreshImageSwap()
-
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') return
-  if (changes.moduleState || changes.packs || changes.activePackId) {
-    void refreshImageSwap()
-  }
-})
-
-chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === 'modules:changed' || message?.type === 'packs:changed') {
-    void refreshImageSwap()
-  }
-})
+export {}

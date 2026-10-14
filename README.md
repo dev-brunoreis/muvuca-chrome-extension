@@ -1,14 +1,6 @@
 # Muvuca
 
-Extensão Chrome (Manifest V3) numa mesh P2P pública. Quem estiver online troca packs de imagem e manda chat anônimo entre peers, sem servidor próprio.
-
-## Troca de imagens
-
-Substitui fotos das páginas pelo pack ativo. Dá pra criar packs locais (até 8 imagens, lado máximo 480px), ativar um deles e publicar na mesh para outros peers pedirem.
-
-## Chat anônimo
-
-Mensagens de até 280 caracteres para quem estiver na mesh agora. O nick nasce da sessão (`anon-xxxx`) e some ao fechar o Chrome. O histórico local guarda no máximo 50 mensagens; o rate limit é 4 mensagens a cada 10 segundos.
+Extensão Chrome (Manifest V3) com uma mesh P2P pública. O core só mantém o peer vivo e um registry de módulos — features entram como plugins.
 
 ## Desenvolvimento
 
@@ -35,10 +27,16 @@ Para iterar com hot reload:
 npm run dev
 ```
 
+## Módulos
+
+Registre um `ModuleDefinition` e acrescente em `src/modules/index.ts` (`allModules`). O service worker registra a lista, o popup desenha os toggles, e envelopes da mesh chegam em `onPeerMessage`.
+
+Se o módulo precisar mexer no DOM da página, volte a declarar `content_scripts` e `host_permissions` em `manifest.config.ts` e inicialize o adapter em `src/content/entry.ts`.
+
 ## Stack
 
 Vite, TypeScript, `@crxjs/vite-plugin` e Trystero (estratégia torrent) para a mesh. O peer fica vivo num documento offscreen.
 
 ## Aviso
 
-É um brinquedo de mesh pública. Não trate o chat como privado. Qualquer peer na sala `muvuca-public` pode ver o que você manda.
+É uma mesh pública. Qualquer peer na sala `muvuca-public` pode ver o que o módulo mandar.

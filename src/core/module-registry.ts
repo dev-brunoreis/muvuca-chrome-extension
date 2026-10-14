@@ -1,5 +1,5 @@
-import { getModuleState, setModuleEnabled } from './storage'
-import type { ModuleDefinition, ModuleId, ModuleState, MeshEnvelope } from './types'
+import { getStoredModuleState, setModuleEnabled } from './storage'
+import type { MeshEnvelope, ModuleDefinition, ModuleId, ModuleListItem, ModuleState } from './types'
 
 const modules = new Map<ModuleId, ModuleDefinition>()
 
@@ -7,8 +7,26 @@ export function registerModule(mod: ModuleDefinition): void {
   modules.set(mod.id, mod)
 }
 
-export function listModules(): ModuleDefinition[] {
-  return [...modules.values()]
+export function listModules(): ModuleListItem[] {
+  return [...modules.values()].map(({ id, name, description, defaultEnabled }) => ({
+    id,
+    name,
+    description,
+    defaultEnabled,
+  }))
+}
+
+function defaultState(): ModuleState {
+  const state: ModuleState = {}
+  for (const mod of modules.values()) {
+    state[mod.id] = mod.defaultEnabled
+  }
+  return state
+}
+
+export async function getModuleState(): Promise<ModuleState> {
+  const saved = await getStoredModuleState()
+  return { ...defaultState(), ...saved }
 }
 
 export async function applyModuleState(state: ModuleState): Promise<void> {
@@ -22,14 +40,14 @@ export async function applyModuleState(state: ModuleState): Promise<void> {
 }
 
 export async function toggleModule(id: ModuleId, enabled: boolean): Promise<ModuleState> {
-  const state = await setModuleEnabled(id, enabled)
+  await setModuleEnabled(id, enabled)
   const mod = modules.get(id)
   if (enabled) {
     await mod?.onEnable?.()
   } else {
     await mod?.onDisable?.()
   }
-  return state
+  return getModuleState()
 }
 
 export async function dispatchPeerMessage(msg: MeshEnvelope): Promise<void> {
@@ -41,4 +59,10 @@ export async function dispatchPeerMessage(msg: MeshEnvelope): Promise<void> {
   }
 }
 
-export { getModuleState }
+export async function notifyPeerJoined(): Promise<void> {
+  const state = await getModuleState()
+  for (const mod of modules.values()) {
+    if (!state[mod.id]) continue
+    await mod.onPeerJoined?.()
+  }
+}

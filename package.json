@@ -1,9 +1,9 @@
 {
   "name": "muvuca",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Modular P2P Chrome extension: public mesh, image swap, anonymous chat.",
+  "description": "Modular P2P Chrome extension: public mesh and a plugin registry.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

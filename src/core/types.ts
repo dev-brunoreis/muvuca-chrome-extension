@@ -1,4 +1,4 @@
-export type ModuleId = 'image-swap' | 'anon-chat'
+export type ModuleId = string
 
 export type Identity = {
   id: string
@@ -31,35 +31,18 @@ export type MeshStatus = {
 
 export type ModuleState = Record<ModuleId, boolean>
 
-export type ModuleDefinition = {
+export type ModuleListItem = {
   id: ModuleId
   name: string
+  description?: string
   defaultEnabled: boolean
+}
+
+export type ModuleDefinition = ModuleListItem & {
   onEnable?: () => void | Promise<void>
   onDisable?: () => void | Promise<void>
   onPeerMessage?: (msg: MeshEnvelope) => void | Promise<void>
-}
-
-export type ImagePackMeta = {
-  id: string
-  name: string
-  author: string
-  imageCount: number
-  createdAt: number
-  source: 'local' | 'mesh' | 'builtin'
-}
-
-export type ImagePack = ImagePackMeta & {
-  images: string[]
-}
-
-export type ChatMessage = {
-  id: string
-  from: string
-  nick: string
-  text: string
-  ts: number
-  mine?: boolean
+  onPeerJoined?: () => void | Promise<void>
 }
 
 export type BusMessage =
@@ -71,14 +54,8 @@ export type BusMessage =
   | { type: 'mesh:peer-joined' }
   | { type: 'modules:set'; id: ModuleId; enabled: boolean }
   | { type: 'modules:get' }
+  | { type: 'modules:list' }
   | { type: 'identity:get' }
-  | { type: 'packs:list' }
-  | { type: 'packs:create'; name: string; images: string[] }
-  | { type: 'packs:activate'; packId: string }
-  | { type: 'packs:publish'; packId: string }
-  | { type: 'packs:request'; packId: string }
-  | { type: 'chat:send'; text: string }
-  | { type: 'chat:history' }
   | { type: 'offscreen:ready' }
 
 export type BusResponseMap = {
@@ -90,13 +67,7 @@ export type BusResponseMap = {
   'mesh:peer-joined': { ok: true }
   'modules:set': ModuleState
   'modules:get': ModuleState
+  'modules:list': ModuleListItem[]
   'identity:get': Identity
-  'packs:list': { packs: ImagePack[]; activePackId: string }
-  'packs:create': ImagePack
-  'packs:activate': { activePackId: string }
-  'packs:publish': { ok: true }
-  'packs:request': { ok: true }
-  'chat:send': ChatMessage | { error: string }
-  'chat:history': ChatMessage[]
   'offscreen:ready': { ok: true }
 }

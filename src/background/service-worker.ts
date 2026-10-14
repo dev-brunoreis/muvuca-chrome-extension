@@ -5,24 +5,17 @@ import {
   applyModuleState,
   dispatchPeerMessage,
   getModuleState,
+  listModules,
+  notifyPeerJoined,
   registerModule,
   toggleModule,
 } from '../core/module-registry'
-import { getChatHistory } from '../core/storage'
-import { anonChatModule, sendChat } from '../modules/anon-chat'
-import {
-  activatePack,
-  createPack,
-  imageSwapModule,
-  listPacks,
-  localPackMetas,
-  publishPack,
-  requestPack,
-} from '../modules/image-swap'
+import { allModules } from '../modules'
 import type { MeshEnvelope, MeshStatus } from '../core/types'
 
-registerModule(imageSwapModule)
-registerModule(anonChatModule)
+for (const mod of allModules) {
+  registerModule(mod)
+}
 
 const OFFSCREEN_URL = 'src/offscreen/offscreen.html'
 
@@ -56,24 +49,6 @@ async function ensureOffscreen(): Promise<void> {
   }
 }
 
-async function announcePacks(): Promise<void> {
-  const identity = await getOrCreateIdentity()
-  const metas = await localPackMetas()
-  for (const meta of metas) {
-    await sendBus({
-      type: 'mesh:send',
-      envelope: {
-        id: crypto.randomUUID(),
-        type: 'pack-announce',
-        moduleId: 'image-swap',
-        payload: meta,
-        from: identity.id,
-        ts: Date.now(),
-      },
-    }).catch(() => undefined)
-  }
-}
-
 async function sayHello(): Promise<void> {
   const identity = await getOrCreateIdentity()
   const envelope: MeshEnvelope = {
@@ -87,18 +62,13 @@ async function sayHello(): Promise<void> {
   await sendBus({ type: 'mesh:send', envelope }).catch(() => undefined)
 }
 
-function notifyTabs(type: 'modules:changed' | 'packs:changed'): void {
-  void chrome.tabs.query({}, (tabs) => {
-    for (const tab of tabs) {
-      if (tab.id === undefined) continue
-      void chrome.tabs.sendMessage(tab.id, { type }).catch(() => undefined)
-    }
-  })
+async function greetMesh(): Promise<void> {
+  await sayHello()
+  await notifyPeerJoined()
 }
 
 async function init(): Promise<void> {
   await getOrCreateIdentity()
-  await listPacks()
   await applyModuleState(await getModuleState())
   await ensureOffscreen()
   await chrome.alarms.create(MESH_KEEPALIVE_ALARM, { periodInMinutes: 0.4 })
@@ -126,7 +96,7 @@ function reply(sendResponse: (value: unknown) => void, task: Promise<unknown>): 
 
 onBus((message, _sender, sendResponse) => {
   if (message.type === 'offscreen:ready') {
-    void sayHello().then(() => announcePacks())
+    void greetMesh()
     sendResponse({ ok: true })
     return
   }
@@ -158,76 +128,22 @@ onBus((message, _sender, sendResponse) => {
     return
   }
   if (message.type === 'mesh:peer-joined') {
-    void sayHello().then(() => announcePacks())
+    void greetMesh()
     sendResponse({ ok: true })
     return
   }
   if (message.type === 'modules:get') {
     return reply(sendResponse, getModuleState())
   }
+  if (message.type === 'modules:list') {
+    sendResponse(listModules())
+    return
+  }
   if (message.type === 'modules:set') {
-    return reply(
-      sendResponse,
-      toggleModule(message.id, message.enabled).then((state) => {
-        notifyTabs('modules:changed')
-        return state
-      }),
-    )
+    return reply(sendResponse, toggleModule(message.id, message.enabled))
   }
   if (message.type === 'identity:get') {
     return reply(sendResponse, getOrCreateIdentity())
-  }
-  if (message.type === 'packs:list') {
-    return reply(sendResponse, listPacks())
-  }
-  if (message.type === 'packs:create') {
-    return reply(
-      sendResponse,
-      getOrCreateIdentity().then((identity) =>
-        createPack(message.name, message.images, identity.nick).then((pack) => {
-          notifyTabs('packs:changed')
-          return pack
-        }),
-      ),
-    )
-  }
-  if (message.type === 'packs:activate') {
-    return reply(
-      sendResponse,
-      activatePack(message.packId).then((activePackId) => {
-        notifyTabs('packs:changed')
-        return { activePackId }
-      }),
-    )
-  }
-  if (message.type === 'packs:publish') {
-    return reply(
-      sendResponse,
-      ensureOffscreen()
-        .then(() => getOrCreateIdentity())
-        .then((identity) => publishPack(message.packId, identity.id))
-        .then(() => ({ ok: true })),
-    )
-  }
-  if (message.type === 'packs:request') {
-    return reply(
-      sendResponse,
-      ensureOffscreen()
-        .then(() => getOrCreateIdentity())
-        .then((identity) => requestPack(message.packId, identity.id))
-        .then(() => ({ ok: true })),
-    )
-  }
-  if (message.type === 'chat:send') {
-    return reply(
-      sendResponse,
-      ensureOffscreen()
-        .then(() => getOrCreateIdentity())
-        .then((identity) => sendChat(identity, message.text)),
-    )
-  }
-  if (message.type === 'chat:history') {
-    return reply(sendResponse, getChatHistory())
   }
 })
 

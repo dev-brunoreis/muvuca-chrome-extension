@@ -21,6 +21,14 @@ npm run build
 
 No Chrome: `chrome://extensions` → modo do desenvolvedor → Carregar sem compactação → pasta `dist`.
 
+Zip local (mesmo artefato da CI):
+
+```bash
+npm run zip
+```
+
+Cada merge em `main` gera um release no GitHub com `muvuca.zip` anexado (e o mesmo arquivo como artifact do workflow).
+
 Para iterar com hot reload:
 
 ```bash
